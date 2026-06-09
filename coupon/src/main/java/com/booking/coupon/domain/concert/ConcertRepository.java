@@ -1,4 +1,6 @@
 package com.booking.coupon.domain.concert;
 
-public class ConcertRepository {
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface ConcertRepository extends JpaRepository<Concert, Long> {
 }
