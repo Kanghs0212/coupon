@@ -36,40 +36,8 @@
 
 복잡해진 비즈니스 요구사항에 맞춰 데이터의 중복을 제거하고 연관 관계를 명확히 정의한 논리적 구조입니다.
 
-```mermaid
-erDiagram
-    MEMBER {
-        Long id PK
-        String username UK
-        String password
-        String name
-    }
-    CONCERT {
-        Long id PK
-        String title
-        String poster_url
-        String venue
-    }
-    SEAT {
-        Long id PK
-        Long concert_id FK
-        String seat_name
-        int price
-        String status
-        Long version
-    }
-    RESERVATION {
-        Long id PK
-        Long member_id FK
-        Long seat_id FK
-        LocalDateTime reserved_at
-    }
+![diagram.png](../Users/Metato/Downloads/diagram.png)
 
-    MEMBER ||--o{ RESERVATION : "places"
-    CONCERT ||--o{ SEAT : "has"
-    SEAT ||--o| RESERVATION : "mapped_to"
-
-```
 
 ### 📊 연관 관계 핵심 설명
 
