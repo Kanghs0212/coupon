@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  # 1. PostgreSQL (실제 데이터베이스)
+  postgres:
+    image: postgres:15
+    container_name: coupon-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: coupon
+    restart: always
+
+  # 2. Redis (Phase 3에서 사용할 분산 락 및 캐시 서버)
+  redis:
+    image: redis:latest
+    container_name: coupon-redis
+    ports:
+      - "6379:6379"
+    restart: always
