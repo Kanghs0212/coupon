@@ -36,8 +36,7 @@
 
 복잡해진 비즈니스 요구사항에 맞춰 데이터의 중복을 제거하고 연관 관계를 명확히 정의한 논리적 구조입니다.
 
-![diagram.png](../Users/Metato/Downloads/diagram.png)
-
+![diagram.png](coupon/src/main/resources/templates/diagram.png)
 
 ### 📊 연관 관계 핵심 설명
 
