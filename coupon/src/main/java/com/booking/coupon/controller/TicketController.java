@@ -1,30 +1,55 @@
 package com.booking.coupon.controller;
 
+import com.booking.coupon.domain.concert.ConcertRepository;
+import com.booking.coupon.domain.seat.SeatRepository;
 import com.booking.coupon.service.TicketQueueService;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestController
-@CrossOrigin("*") // 프론트엔드 연동을 위한 CORS 전체 허용 주문
+@CrossOrigin("*")
 @RequiredArgsConstructor
 public class TicketController {
 
     private final TicketQueueService ticketQueueService;
     private final StringRedisTemplate redisTemplate;
 
-    /**
-     * 특정 콘서트의 특정 좌석을 예매 요청하는 API
-     */
+    // 🔥 동적 조회를 위해 Repository 추가
+    private final ConcertRepository concertRepository;
+    private final SeatRepository seatRepository;
+
+    // 1. 전체 콘서트 목록 조회 API
+    @GetMapping("/concerts")
+    public ResponseEntity<List<ConcertDto>> getConcerts() {
+        List<ConcertDto> response = concertRepository.findAll().stream()
+                .map(c -> new ConcertDto(c.getId(), c.getTitle(), c.getPosterUrl(), c.getVenue()))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(response);
+    }
+
+    // 2. 특정 콘서트의 좌석 목록 조회 API
+    @GetMapping("/concerts/{concertId}/seats")
+    public ResponseEntity<List<SeatDto>> getSeats(@PathVariable("concertId") Long concertId) {
+        List<SeatDto> response = seatRepository.findByConcertId(concertId).stream()
+                .map(s -> new SeatDto(s.getId(), s.getSeatName(), s.getPrice(), s.getStatus().name()))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(response);
+    }
+
+    // 3. 기존 티켓 예매 API
     @PostMapping("/concerts/{concertId}/reserve")
     public ResponseEntity<String> reserveTicket(
             @PathVariable("concertId") Long concertId,
             @RequestParam("seatId") Long seatId,
             @RequestParam("memberId") Long memberId) {
         try {
-            // 초고속 Redis 대기열 서비스로 요청을 이관합니다.
             ticketQueueService.queueTicketRequest(concertId, seatId, memberId);
             return ResponseEntity.ok("좌석 선점 완료! 예매 결제가 진행됩니다.");
         } catch (IllegalArgumentException e) {
@@ -34,17 +59,29 @@ public class TicketController {
         }
     }
 
-    /**
-     * 차후 테스트 및 화면 리셋을 위해 티켓팅 관련 Redis 락 데이터를 싹 청소하는 API
-     */
-    @GetMapping("/concerts/reset")
+    // 4. Redis 초기화 API
+    @PostMapping("/concerts/reset")
     public ResponseEntity<String> resetTicketData() {
-        // ticket:lock으로 시작하는 모든 Redis 키를 찾아 삭제합니다.
         Set<String> keys = redisTemplate.keys("ticket:lock:*");
-        if (keys != null && !keys.isEmpty()) {
-            redisTemplate.delete(keys);
-        }
+        if (keys != null && !keys.isEmpty()) redisTemplate.delete(keys);
         redisTemplate.delete("ticket_queue");
-        return ResponseEntity.ok("티켓팅 관련 Redis 락 및 대기열 데이터 초기화 완료!");
+        return ResponseEntity.ok("Redis 초기화 완료!");
+    }
+
+    // --- DTO 클래스들 ---
+    @Data
+    public static class ConcertDto {
+        private Long id; private String title; private String posterUrl; private String venue;
+        public ConcertDto(Long id, String title, String posterUrl, String venue) {
+            this.id = id; this.title = title; this.posterUrl = posterUrl; this.venue = venue;
+        }
+    }
+
+    @Data
+    public static class SeatDto {
+        private Long id; private String seatName; private int price; private String status;
+        public SeatDto(Long id, String seatName, int price, String status) {
+            this.id = id; this.seatName = seatName; this.price = price; this.status = status;
+        }
     }
 }
