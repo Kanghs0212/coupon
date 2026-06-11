@@ -3,13 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>티켓 예매 플랫폼</title>
-    <!-- Tailwind CSS (디자인) -->
+    <title>CATCH SEAT (캐치시트) - 티켓 예매 플랫폼</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <!-- Babel (JSX 번역기) -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
@@ -224,8 +221,9 @@
         // 네비게이션 바 컴포넌트
         const Navbar = () => (
             <nav className="bg-gray-900 text-white p-4 shadow-md flex justify-between items-center sticky top-0 z-50">
+                {/* 🌟 로고 이름을 CATCH SEAT으로 변경 */}
                 <h1 className="text-2xl font-black text-red-500 tracking-tighter cursor-pointer" onClick={() => user && setView('concertList')}>
-                    TICKET PARK
+                    CATCH SEAT
                 </h1>
                 {user && (
                     <div className="flex items-center gap-4">
@@ -282,13 +280,13 @@
                                 {concerts.map(c => (
                                     <div key={c.id} className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition duration-300 cursor-pointer group" onClick={() => fetchSeats(c)}>
                                         <div className="h-64 bg-gray-200 relative overflow-hidden flex items-center justify-center">
-                                            {/* 🛠️ 에러 방어 로직 추가: DB URL이 없거나 엑박일 경우 예쁜 기본 썸네일 렌더링 */}
+                                            {/* 🛠️ 에러 방어 로직 추가: 엑박일 경우 예쁜 기본 썸네일 렌더링 (CATCH SEAT 문구 반영) */}
                                             <img
                                                 src={c.posterUrl || `https://picsum.photos/seed/${c.id + 10}/400/300`}
                                                 alt={c.title}
                                                 onError={(e) => {
                                                     e.target.onerror = null;
-                                                    e.target.src = `https://placehold.co/400x300/1f2937/ffffff?text=Ticket+Park`;
+                                                    e.target.src = `https://placehold.co/400x300/1f2937/ffffff?text=Catch+Seat`;
                                                 }}
                                                 className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
                                             />

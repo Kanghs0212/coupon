@@ -1,4 +1,6 @@
-# 🎟️ 대규모 트래픽 대응 티켓팅 예매 플랫폼 프로젝트 기획서
+# 🎟️ 대규모 트래픽 대응 티켓팅 예매 플랫폼 [CATCH SEAT (캐치시트)]
+
+![catchseat.png](coupon/src/main/resources/templates/catchseat.png)
 
 ## 📝 프로젝트 개요 (Introduction)
 
