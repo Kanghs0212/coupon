@@ -83,7 +83,7 @@ DB가 제공하는 락으로 갱신 손실을 막기로 했습니다. Spring Dat
 
 튜닝 후 1초 3,000명 동시 접속 테스트를 다시 돌린 결과입니다.
 
-
+![catchseat.png](coupon/src/main/resources/templates/tps.png)
 
 | 구분 | 비관적 락 (Phase 2) | 최종 (비동기 큐 + 인프라 튜닝) | 변화 |
 | --- | --- | --- | --- |
