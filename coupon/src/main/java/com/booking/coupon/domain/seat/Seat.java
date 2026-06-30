@@ -17,10 +17,10 @@ public class Seat {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "concert_id", nullable = false)
-    private Concert concert; // 어떤 공연의 좌석인지
+    private Concert concert; // 소속 콘서트
 
     @Column(nullable = false)
-    private String seatName; // 예: "A열 1번", "VIP석 12번"
+    private String seatName; // 예: "A열 1번"
 
     @Column(nullable = false)
     private int price; // 좌석 가격
@@ -30,7 +30,15 @@ public class Seat {
     private SeatStatus status; // AVAILABLE, RESERVED
 
     @Version
-    private Long version; // 🔥 동시성 제어(낙관적 락)를 위한 버전 필드
+    private Long version; // 낙관적 락 버전
+
+    // 시딩용 생성자 (상태는 AVAILABLE)
+    public Seat(Concert concert, String seatName, int price) {
+        this.concert = concert;
+        this.seatName = seatName;
+        this.price = price;
+        this.status = SeatStatus.AVAILABLE;
+    }
 
     public void reserve() {
         if (this.status == SeatStatus.RESERVED) {
@@ -39,7 +47,7 @@ public class Seat {
         this.status = SeatStatus.RESERVED;
     }
 
-    // 테스트용 상태 초기화 메서드
+    // 상태 초기화 (테스트용)
     public void cancel() {
         this.status = SeatStatus.AVAILABLE;
     }

@@ -22,7 +22,7 @@ public class Reservation {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "seat_id", nullable = false)
-    private Seat seat; // 예매한 좌석 (1개 좌석은 1개의 예매 내역만 가짐)
+    private Seat seat; // 예매한 좌석 (좌석:예매 = 1:1)
 
     @Column(nullable = false)
     private LocalDateTime reservedAt; // 예매 일시

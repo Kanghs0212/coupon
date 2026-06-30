@@ -5,6 +5,7 @@ import com.booking.coupon.domain.reservation.ReservationRepository;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -19,14 +20,17 @@ public class ReservationController {
 
     private final ReservationRepository reservationRepository;
 
-    // 내 예매 내역을 조회하는 API
+    // 내 예매 내역 조회
+    // memberId는 파라미터가 아닌 로그인 토큰에서 추출 (타인 내역 조회 방지)
     @GetMapping("/me")
-    public ResponseEntity<List<ReservationResponse>> getMyReservations(@RequestParam("memberId") Long memberId) {
+    public ResponseEntity<List<ReservationResponse>> getMyReservations(Authentication authentication) {
 
-        // 1. DB에서 해당 회원의 영수증(Reservation) 목록을 전부 가져옵니다.
+        Long memberId = (Long) authentication.getDetails();
+
+        // 회원의 예매 목록 조회
         List<Reservation> reservations = reservationRepository.findByMemberId(memberId);
 
-        // 2. 프론트엔드가 화면에 그리기 좋게 꼭 필요한 정보만 담은 DTO로 변환합니다.
+        // 응답 DTO로 변환
         List<ReservationResponse> response = reservations.stream()
                 .map(r -> new ReservationResponse(
                         r.getId(),
@@ -40,7 +44,7 @@ public class ReservationController {
         return ResponseEntity.ok(response);
     }
 
-    // --- 프론트엔드로 응답을 보낼 DTO 클래스 ---
+    // 응답 DTO
     @Data
     public static class ReservationResponse {
         private Long reservationId;

@@ -14,7 +14,7 @@ public class CouponService {
 
     @Transactional
     public void decrease(Long couponId) {
-        // 🔥 일반 findById 대신 새로 만든 락(Lock) 쿼리 메서드로 변경합니다.
+        // 비관적 락으로 조회
         Coupon coupon = couponRepository.findByIdWithPessimisticLock(couponId)
                 .orElseThrow(() -> new IllegalArgumentException("쿠폰을 찾을 수 없습니다."));
 

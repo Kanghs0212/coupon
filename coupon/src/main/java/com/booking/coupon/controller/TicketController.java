@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,7 +22,7 @@ public class TicketController {
     private final TicketQueueService ticketQueueService;
     private final StringRedisTemplate redisTemplate;
 
-    // 🔥 동적 조회를 위해 Repository 추가
+    // 동적 조회용 Repository
     private final ConcertRepository concertRepository;
     private final SeatRepository seatRepository;
 
@@ -43,13 +44,15 @@ public class TicketController {
         return ResponseEntity.ok(response);
     }
 
-    // 3. 기존 티켓 예매 API
+    // 3. 티켓 예매 API
+    // memberId는 파라미터가 아닌 검증된 토큰에서 추출 (파라미터 조작 방지)
     @PostMapping("/concerts/{concertId}/reserve")
     public ResponseEntity<String> reserveTicket(
             @PathVariable("concertId") Long concertId,
             @RequestParam("seatId") Long seatId,
-            @RequestParam("memberId") Long memberId) {
+            Authentication authentication) {
         try {
+            Long memberId = (Long) authentication.getDetails();
             ticketQueueService.queueTicketRequest(concertId, seatId, memberId);
             return ResponseEntity.ok("좌석 선점 완료! 예매 결제가 진행됩니다.");
         } catch (IllegalArgumentException e) {

@@ -19,3 +19,12 @@ server:
       max: 1000
     accept-count: 10000
     max-connections: 10000
+
+# JWT 서명 비밀키 (HS256, 32바이트 이상). 운영 시 환경변수 주입 권장
+jwt:
+  secret: ${JWT_SECRET:catch-seat-super-secret-key-please-change-in-production-32bytes}
+
+# 앱 시작 시 콘서트/좌석/예매 시딩 여부 (회원은 유지, false면 비활성화)
+app:
+  data-init:
+    enabled: true

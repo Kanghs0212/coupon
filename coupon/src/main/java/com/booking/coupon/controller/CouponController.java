@@ -19,7 +19,7 @@ public class CouponController {
     @PostMapping("/coupons/{couponId}/decrease")
     public ResponseEntity<String> decrease(@PathVariable("couponId") Long couponId) {
         try {
-            // 이제 자물쇠(Facade)가 아닌, 초고속 비동기 대기열 서비스를 호출합니다!
+            // 비동기 대기열 서비스 호출
             couponAsyncService.issue(couponId);
             return ResponseEntity.ok("쿠폰 발급 접수 완료");
         } catch (IllegalArgumentException e) {
@@ -29,7 +29,7 @@ public class CouponController {
         }
     }
 
-    // 💡 JMeter 테스트 전 Redis에 남아있는 찌꺼기를 청소하기 위한 초기화 API
+    // Redis 카운터/대기열 초기화 (테스트용)
     @GetMapping("/coupons/reset")
     public ResponseEntity<String> resetRedis() {
         redisTemplate.delete("coupon_count:1");
