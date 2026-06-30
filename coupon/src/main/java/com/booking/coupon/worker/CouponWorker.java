@@ -3,6 +3,7 @@ package com.booking.coupon.worker;
 import com.booking.coupon.domain.Coupon;
 import com.booking.coupon.domain.CouponRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -15,11 +16,13 @@ public class CouponWorker {
     private final StringRedisTemplate redisTemplate;
     private final CouponRepository couponRepository;
 
-    // 1초마다 큐 처리
-    @Scheduled(fixedDelay = 1000)
+    @Value("${app.coupon.id:1}")
+    private Long couponId; // 처리 대상 쿠폰 ID
+
+    // 일정 주기로 큐 처리
+    @Scheduled(fixedDelayString = "${app.coupon.worker-delay-ms:1000}")
     @Transactional
     public void processQueue() {
-        Long couponId = 1L; // 테스트용 쿠폰 ID
         String queueKey = "coupon_queue:" + couponId;
 
         // 대기열 크기 확인

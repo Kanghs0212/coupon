@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/coupon
-    username: root
-    password: password
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/coupon}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:password}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -24,7 +24,15 @@ server:
 jwt:
   secret: ${JWT_SECRET:catch-seat-super-secret-key-please-change-in-production-32bytes}
 
-# 앱 시작 시 콘서트/좌석/예매 시딩 여부 (회원은 유지, false면 비활성화)
+# 애플리케이션 설정
 app:
+  # 앱 시작 시 콘서트/좌석/예매 시딩 여부 (회원은 유지, false면 비활성화)
   data-init:
     enabled: true
+  coupon:
+    id: 1              # 워커가 처리할 쿠폰 ID
+    limit: 10000       # 선착순 발급 한도
+    worker-delay-ms: 1000
+  ticket:
+    lock-ttl-minutes: 10   # 좌석 선점 락 유지 시간
+    worker-delay-ms: 500

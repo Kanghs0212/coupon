@@ -9,11 +9,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 앱 시작 시 콘서트/좌석/예매 데이터를 초기화하고 데모 데이터를 시딩한다. 회원은 보존.
@@ -28,6 +30,7 @@ public class DataInitializer implements CommandLineRunner {
     private final ConcertRepository concertRepository;
     private final SeatRepository seatRepository;
     private final ReservationRepository reservationRepository;
+    private final StringRedisTemplate redisTemplate;
 
     @Override
     @Transactional
@@ -38,6 +41,11 @@ public class DataInitializer implements CommandLineRunner {
         reservationRepository.deleteAllInBatch();
         seatRepository.deleteAllInBatch();
         concertRepository.deleteAllInBatch();
+
+        // DB와 상태를 맞추기 위해 Redis의 좌석 락/큐도 함께 정리
+        Set<String> seatLocks = redisTemplate.keys("ticket:lock:*");
+        if (seatLocks != null && !seatLocks.isEmpty()) redisTemplate.delete(seatLocks);
+        redisTemplate.delete(List.of("ticket_queue", "ticket_processing", "ticket_dlq"));
 
         // 콘서트 3개 생성
         Concert concert1 = concertRepository.save(new Concert(

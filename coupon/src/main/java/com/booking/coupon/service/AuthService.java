@@ -32,13 +32,13 @@ public class AuthService {
 
     // 로그인 (성공 시 토큰 반환)
     public String login(String username, String password) {
-        // 회원 조회
+        // 회원 조회 (계정 존재 여부 노출을 막기 위해 실패 메시지를 통일)
         Member member = memberRepository.findByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("가입되지 않은 아이디입니다."));
+                .orElseThrow(() -> new IllegalArgumentException("아이디 또는 비밀번호가 일치하지 않습니다."));
 
         // 비밀번호 검증
         if (!passwordEncoder.matches(password, member.getPassword())) {
-            throw new IllegalArgumentException("비밀번호가 틀렸습니다.");
+            throw new IllegalArgumentException("아이디 또는 비밀번호가 일치하지 않습니다.");
         }
 
         // JWT 토큰 발급

@@ -67,7 +67,7 @@ public class TicketController {
     public ResponseEntity<String> resetTicketData() {
         Set<String> keys = redisTemplate.keys("ticket:lock:*");
         if (keys != null && !keys.isEmpty()) redisTemplate.delete(keys);
-        redisTemplate.delete("ticket_queue");
+        redisTemplate.delete(List.of("ticket_queue", "ticket_processing", "ticket_dlq"));
         return ResponseEntity.ok("Redis 초기화 완료!");
     }
 
