@@ -47,6 +47,9 @@
         }
     };
 
+    // 토큰 만료 여부 확인 (JWT exp는 초 단위)
+    const isExpired = (decoded) => !decoded.exp || decoded.exp * 1000 <= Date.now();
+
     function App() {
         // 앱 화면 상태 관리 (login, signup, concertList, seat, mypage)
         const [view, setView] = useState('login');
@@ -64,14 +67,21 @@
         const [password, setPassword] = useState('');
         const [name, setName] = useState('');
 
-        // 토큰이 있으면 유저 정보 세팅 후 콘서트 목록 띄우기
+        // 토큰이 있으면: 유효성+만료 확인 후 콘서트 목록 띄우기. 만료/위조면 자동 로그아웃
         useEffect(() => {
             if (token) {
                 const decoded = parseJwt(token);
-                if (decoded) {
+                if (decoded && !isExpired(decoded)) {
                     setUser(decoded);
                     fetchConcerts();
                     setView('concertList');
+
+                    // 탭을 열어둔 채 만료되는 경우까지 대비해, 남은 시간 뒤 자동 로그아웃 예약
+                    const timer = setTimeout(() => {
+                        alert('로그인이 만료되었습니다. 다시 로그인해주세요.');
+                        handleLogout();
+                    }, decoded.exp * 1000 - Date.now());
+                    return () => clearTimeout(timer);
                 } else {
                     handleLogout();
                 }
