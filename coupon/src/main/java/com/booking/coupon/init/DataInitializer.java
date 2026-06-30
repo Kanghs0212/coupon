@@ -42,9 +42,11 @@ public class DataInitializer implements CommandLineRunner {
         seatRepository.deleteAllInBatch();
         concertRepository.deleteAllInBatch();
 
-        // DB와 상태를 맞추기 위해 Redis의 좌석 락/큐도 함께 정리
-        Set<String> seatLocks = redisTemplate.keys("ticket:lock:*");
-        if (seatLocks != null && !seatLocks.isEmpty()) redisTemplate.delete(seatLocks);
+        // DB와 상태를 맞추기 위해 Redis의 좌석 락/큐/대기열도 함께 정리
+        Set<String> redisKeys = redisTemplate.keys("ticket:lock:*");
+        if (redisKeys != null && !redisKeys.isEmpty()) redisTemplate.delete(redisKeys);
+        Set<String> waitingKeys = redisTemplate.keys("waiting:*");
+        if (waitingKeys != null && !waitingKeys.isEmpty()) redisTemplate.delete(waitingKeys);
         redisTemplate.delete(List.of("ticket_queue", "ticket_processing", "ticket_dlq"));
 
         // 콘서트 3개 생성

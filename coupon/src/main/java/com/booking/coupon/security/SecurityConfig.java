@@ -36,6 +36,7 @@ public class SecurityConfig {
                 // 접근 권한 설정
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll() // 회원가입/로그인 공개
+                        .requestMatchers("/concerts/*/waiting").authenticated() // 대기열은 로그인 필요(GET 폴링 포함)
                         // 콘서트/좌석 조회(GET)만 공개, 예매(POST)는 인증 필요
                         .requestMatchers(HttpMethod.GET, "/concerts/**").permitAll()
                         .anyRequest().authenticated() // 그 외 요청은 로그인 필요

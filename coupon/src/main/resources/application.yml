@@ -36,3 +36,7 @@ app:
   ticket:
     lock-ttl-minutes: 10   # 좌석 선점 락 유지 시간
     worker-delay-ms: 500
+  waiting:
+    admit-per-tick: 5         # 한 틱에 입장시킬 인원
+    tick-ms: 2000             # 입장 처리 주기(ms)
+    passed-ttl-minutes: 30    # 입장 권한 유지 시간

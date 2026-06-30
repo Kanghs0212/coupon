@@ -3,6 +3,7 @@ package com.booking.coupon.controller;
 import com.booking.coupon.domain.concert.ConcertRepository;
 import com.booking.coupon.domain.seat.SeatRepository;
 import com.booking.coupon.service.TicketQueueService;
+import com.booking.coupon.service.WaitingQueueService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 public class TicketController {
 
     private final TicketQueueService ticketQueueService;
+    private final WaitingQueueService waitingQueueService;
     private final StringRedisTemplate redisTemplate;
 
     // 동적 조회용 Repository
@@ -53,6 +55,10 @@ public class TicketController {
             Authentication authentication) {
         try {
             Long memberId = (Long) authentication.getDetails();
+            // 대기열을 통과한 회원만 좌석 선점 가능
+            if (!waitingQueueService.isAdmitted(concertId, memberId)) {
+                return ResponseEntity.badRequest().body("대기열을 먼저 통과해주세요.");
+            }
             ticketQueueService.queueTicketRequest(concertId, seatId, memberId);
             return ResponseEntity.ok("좌석 선점 완료! 예매 결제가 진행됩니다.");
         } catch (IllegalArgumentException e) {
@@ -67,6 +73,8 @@ public class TicketController {
     public ResponseEntity<String> resetTicketData() {
         Set<String> keys = redisTemplate.keys("ticket:lock:*");
         if (keys != null && !keys.isEmpty()) redisTemplate.delete(keys);
+        Set<String> waitingKeys = redisTemplate.keys("waiting:*");
+        if (waitingKeys != null && !waitingKeys.isEmpty()) redisTemplate.delete(waitingKeys);
         redisTemplate.delete(List.of("ticket_queue", "ticket_processing", "ticket_dlq"));
         return ResponseEntity.ok("Redis 초기화 완료!");
     }
