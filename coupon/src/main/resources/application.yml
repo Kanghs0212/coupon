@@ -36,6 +36,8 @@ app:
   ticket:
     lock-ttl-minutes: 10   # 좌석 선점 락 유지 시간
     worker-delay-ms: 500
+    hold-minutes: 5        # 좌석 선점 후 결제 마감까지 시간
+    hold-check-ms: 10000   # 미결제 선점 자동 해제 점검 주기(ms)
   waiting:
     admit-per-tick: 5         # 한 틱에 입장시킬 인원
     tick-ms: 2000             # 입장 처리 주기(ms)

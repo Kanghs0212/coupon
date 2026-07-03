@@ -62,7 +62,13 @@
         const [seats, setSeats] = useState([]);
         const [myReservations, setMyReservations] = useState([]);
         const [waiting, setWaiting] = useState(null); // 대기열 상태 {status, position, total}
+        const [pending, setPending] = useState(null); // 결제 화면의 현재 선점 건
+        const [remainSec, setRemainSec] = useState(null); // 결제 화면 남은 시간(초)
+        const [pendingList, setPendingList] = useState([]); // 마이페이지 결제 대기 목록
+        const [now, setNow] = useState(Date.now());   // 마이페이지 카운트다운용 현재시각
         const pollRef = useRef(null);                 // 대기 순번 폴링 인터벌
+        const pendingRef = useRef(null);              // 결제 대기 예매(최신값)
+        const payTimerRef = useRef(null);             // 결제 카운트다운 인터벌
 
         // 폼 상태
         const [username, setUsername] = useState('');
@@ -89,6 +95,13 @@
                 }
             }
         }, [token]);
+
+        // 마이페이지에 있을 때만 1초마다 카운트다운 갱신
+        useEffect(() => {
+            if (view !== 'mypage') return;
+            const t = setInterval(() => setNow(Date.now()), 1000);
+            return () => clearInterval(t);
+        }, [view]);
 
         // --- API 통신 함수들 ---
 
@@ -136,6 +149,7 @@
         // 3. 로그아웃
         const handleLogout = () => {
             if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+            if (payTimerRef.current) { clearInterval(payTimerRef.current); payTimerRef.current = null; }
             localStorage.removeItem('jwt_token');
             setToken(null);
             setUser(null);
@@ -229,17 +243,17 @@
             setView('concertList');
         };
 
-        // 6. 좌석 예매
+        // 6. 좌석 선점 (누르면 선점 → 결제 화면으로)
         const handleReserve = async (seat) => {
             if (!user) return;
 
-            // 예매된 좌석 차단
-            if (seat.status === 'RESERVED') {
-                alert('이미 예매가 완료된 좌석입니다. 다른 좌석을 선택해주세요!');
+            // 이미 선점/예매된 좌석 차단
+            if (seat.status === 'RESERVED' || seat.status === 'HELD') {
+                alert('이미 선택되었거나 예매된 좌석입니다. 다른 좌석을 선택해주세요.');
                 return;
             }
 
-            const isConfirm = window.confirm(`[${seat.seatName}] 좌석을 예매하시겠습니까?\n가격: ${seat.price.toLocaleString()}원`);
+            const isConfirm = window.confirm(`[${seat.seatName}] 좌석을 선점하시겠습니까?\n가격: ${seat.price.toLocaleString()}원\n선점 후 제한 시간 내에 결제해야 합니다.`);
             if (!isConfirm) return;
 
             try {
@@ -249,27 +263,109 @@
                 });
 
                 if (res.ok) {
-                    alert(`🎉 예매 요청이 완료되었습니다!\n마이페이지로 이동합니다.`);
-                    fetchMyReservations(); // 예매 내역 갱신
-                    setView('mypage');
+                    goPayment(); // 선점 접수 → 결제 화면으로
                 } else {
-                    alert(`😭 예매 실패: ${await res.text()}`);
+                    alert(`선점 실패: ${await res.text()}`);
                 }
             } catch (error) {
-                alert('서버 오류로 예매에 실패했습니다.');
+                alert('서버 오류로 선점에 실패했습니다.');
             }
         };
 
-        // 7. 내 예매 내역 조회
-        const fetchMyReservations = async () => {
-            if (!user) return;
+        // 결제 화면 진입: 선점된 예매를 조회하고 카운트다운 시작
+        const goPayment = () => {
+            pendingRef.current = null;
+            setPending(null);
+            setRemainSec(null);
+            setView('payment');
+            if (payTimerRef.current) clearInterval(payTimerRef.current);
+            payTimerRef.current = setInterval(paymentTick, 1000);
+            paymentTick();
+        };
+
+        // 결제 화면 1초 틱: 선점 조회 → 카운트다운 → 만료 처리
+        const paymentTick = async () => {
+            if (!pendingRef.current) {
+                try {
+                    const res = await fetch('http://localhost:8080/reservations/pending', {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (res.ok) {
+                        const list = await res.json();
+                        const found = list.find(r => r.concertId === selectedConcert.id);
+                        if (found) { pendingRef.current = found; setPending(found); }
+                    }
+                } catch (error) {
+                    // 다음 틱에 재시도
+                }
+                return;
+            }
+            const remain = Math.floor((new Date(pendingRef.current.expiresAt).getTime() - Date.now()) / 1000);
+            if (remain <= 0) {
+                stopPayTimer();
+                alert('결제 시간이 만료되어 좌석이 해제되었습니다.');
+                setView('concertList');
+                return;
+            }
+            setRemainSec(remain);
+        };
+
+        // 결제하기
+        const handlePay = async () => {
+            if (!pendingRef.current) return;
             try {
-                const res = await fetch(`http://localhost:8080/reservations/me`, {
+                const res = await fetch(`http://localhost:8080/reservations/${pendingRef.current.reservationId}/pay`, {
+                    method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (res.ok) {
-                    setMyReservations(await res.json());
+                    stopPayTimer();
+                    alert('결제가 완료되었습니다!');
+                    fetchMyReservations();
+                    setView('mypage');
+                } else {
+                    alert(`결제 실패: ${await res.text()}`);
                 }
+            } catch (error) {
+                alert('결제 중 오류가 발생했습니다.');
+            }
+        };
+
+        const stopPayTimer = () => {
+            if (payTimerRef.current) { clearInterval(payTimerRef.current); payTimerRef.current = null; }
+        };
+
+        // 결제를 미루고 마이페이지로 (선점은 유지 → 목록에서 이어서 결제)
+        const leavePayment = () => {
+            stopPayTimer();
+            fetchMyReservations();
+            setView('mypage');
+        };
+
+        // 마이페이지에서 선점한 좌석 결제 이어하기
+        const resumePayment = (p) => {
+            pendingRef.current = p;
+            setPending(p);
+            setRemainSec(Math.max(0, Math.floor((new Date(p.expiresAt).getTime() - Date.now()) / 1000)));
+            setView('payment');
+            if (payTimerRef.current) clearInterval(payTimerRef.current);
+            payTimerRef.current = setInterval(paymentTick, 1000);
+            paymentTick();
+        };
+
+        // 남은 시간 mm:ss 포맷
+        const formatMMSS = (sec) => `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`;
+
+        // 7. 내 예매 내역 조회 (결제 완료 + 결제 대기)
+        const fetchMyReservations = async () => {
+            if (!user) return;
+            try {
+                const [meRes, pendRes] = await Promise.all([
+                    fetch('http://localhost:8080/reservations/me', { headers: { 'Authorization': `Bearer ${token}` } }),
+                    fetch('http://localhost:8080/reservations/pending', { headers: { 'Authorization': `Bearer ${token}` } })
+                ]);
+                if (meRes.ok) setMyReservations(await meRes.json());
+                if (pendRes.ok) setPendingList(await pendRes.json());
             } catch (error) {
                 console.error("내역을 불러오지 못했습니다.", error);
             }
@@ -409,8 +505,8 @@
                             <div className="flex justify-center mb-12 overflow-x-auto hide-scrollbar pb-4">
                                 <div className="grid grid-cols-10 gap-2 md:gap-3">
                                     {seats.map(seat => {
-                                        // RESERVED면 비활성화
-                                        const isReserved = seat.status === 'RESERVED';
+                                        // RESERVED/HELD면 비활성화
+                                        const isReserved = seat.status === 'RESERVED' || seat.status === 'HELD';
                                         return (
                                             <button
                                                 key={seat.id || seat.seatName}
@@ -441,6 +537,44 @@
                         </div>
                     )}
 
+                    {/* 결제 화면 */}
+                    {view === 'payment' && (
+                        <div className="max-w-md mx-auto mt-12 bg-white p-8 rounded-2xl shadow-lg border border-gray-200">
+                            {!pending ? (
+                                <div className="text-center py-10">
+                                    <div className="w-12 h-12 mx-auto mb-4 border-4 border-gray-200 border-t-red-600 rounded-full animate-spin"></div>
+                                    <p className="text-gray-500 mb-6">좌석을 선점하는 중입니다...</p>
+                                    <button onClick={leavePayment} className="text-gray-400 text-sm hover:underline">취소하고 돌아가기</button>
+                                </div>
+                            ) : (
+                                <div>
+                                    <h2 className="text-xl font-bold text-gray-800 mb-1">결제</h2>
+                                    <p className="text-sm text-gray-500 mb-6">{pending.concertTitle}</p>
+
+                                    <div className="bg-gray-50 rounded-xl p-5 border mb-6">
+                                        <div className="flex justify-between mb-2"><span className="text-gray-500">좌석</span><span className="font-bold">{pending.seatName}</span></div>
+                                        <div className="flex justify-between"><span className="text-gray-500">금액</span><span className="font-bold text-red-600">{pending.price.toLocaleString()}원</span></div>
+                                    </div>
+
+                                    <div className="text-center mb-6">
+                                        <p className="text-sm text-gray-400 mb-1">결제 마감까지</p>
+                                        <p className={`text-4xl font-black ${remainSec !== null && remainSec <= 30 ? 'text-red-600' : 'text-gray-800'}`}>
+                                            {remainSec === null ? '--:--' :
+                                                `${String(Math.floor(remainSec / 60)).padStart(2, '0')}:${String(remainSec % 60).padStart(2, '0')}`}
+                                        </p>
+                                    </div>
+
+                                    <button onClick={handlePay} className="w-full bg-red-600 text-white p-3 rounded-lg font-bold hover:bg-red-700 transition mb-2">
+                                        {pending.price.toLocaleString()}원 결제하기
+                                    </button>
+                                    <button onClick={leavePayment} className="w-full text-gray-500 text-sm py-2 hover:underline">
+                                        나중에 결제 (마이페이지에서 이어서 결제)
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* 5. 마이페이지 */}
                     {view === 'mypage' && (
                         <div className="max-w-3xl mx-auto mt-4">
@@ -451,7 +585,35 @@
                                 </button>
                             </div>
 
-                            {myReservations.length === 0 ? (
+                            {/* 결제 대기 목록 (선점만 하고 미결제 상태 → 시간 내 이어서 결제) */}
+                            {pendingList.length > 0 && (
+                                <div className="mb-8">
+                                    <h3 className="text-lg font-bold text-gray-700 mb-3">결제 대기</h3>
+                                    <div className="space-y-3">
+                                        {pendingList.map(p => {
+                                            const remain = Math.floor((new Date(p.expiresAt).getTime() - now) / 1000);
+                                            const expired = remain <= 0;
+                                            return (
+                                                <div key={p.reservationId} className="bg-white rounded-xl shadow-sm border border-red-200 p-5 flex justify-between items-center">
+                                                    <div>
+                                                        <p className="font-bold text-gray-900">{p.concertTitle}</p>
+                                                        <p className="text-sm text-gray-600">{p.seatName} · {p.price.toLocaleString()}원</p>
+                                                        <p className={`text-sm mt-1 font-bold ${expired ? 'text-gray-400' : 'text-red-600'}`}>
+                                                            {expired ? '시간 만료 (좌석이 해제됩니다)' : `결제 마감까지 ${formatMMSS(remain)}`}
+                                                        </p>
+                                                    </div>
+                                                    <button onClick={() => resumePayment(p)} disabled={expired}
+                                                        className={`px-4 py-2 rounded-lg font-bold text-sm transition ${expired ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700'}`}>
+                                                        결제하기
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
+                            {(myReservations.length === 0 && pendingList.length === 0) ? (
                                 <div className="bg-white p-16 rounded-xl shadow-lg border border-gray-200 text-center text-gray-400 font-medium">
                                     <span className="text-5xl block mb-4">🎫</span>
                                     아직 예매한 내역이 없습니다.

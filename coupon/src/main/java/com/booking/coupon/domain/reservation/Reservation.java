@@ -25,11 +25,25 @@ public class Reservation {
     private Seat seat; // 예매한 좌석 (좌석:예매 = 1:1)
 
     @Column(nullable = false)
-    private LocalDateTime reservedAt; // 예매 일시
+    private LocalDateTime reservedAt; // 선점(예매 시작) 일시
 
-    public Reservation(Member member, Seat seat) {
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ReservationStatus status; // PENDING, CONFIRMED
+
+    @Column(nullable = false)
+    private LocalDateTime expiresAt; // 결제 마감 시각 (이 시각 지나면 자동 해제)
+
+    public Reservation(Member member, Seat seat, long holdMinutes) {
         this.member = member;
         this.seat = seat;
         this.reservedAt = LocalDateTime.now();
+        this.status = ReservationStatus.PENDING;
+        this.expiresAt = this.reservedAt.plusMinutes(holdMinutes);
+    }
+
+    // 결제 완료 처리
+    public void confirm() {
+        this.status = ReservationStatus.CONFIRMED;
     }
 }

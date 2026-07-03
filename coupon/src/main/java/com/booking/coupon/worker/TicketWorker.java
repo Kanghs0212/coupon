@@ -49,10 +49,9 @@ public class TicketWorker {
         String seatLockKey = "ticket:lock:concert:" + concertId + ":seat:" + seatId;
 
         try {
-            processor.reserve(seatId, memberId);
-            // 확정 좌석은 락 TTL을 제거해 영구 점유로 둔다 (만료 후 판매 완료 좌석에 대한 거짓 선점 방지).
-            redisTemplate.persist(seatLockKey);
-            log.info("== [Worker] 예매 완료 -> 회원: {}, 좌석: {} ==", memberId, seatId);
+            processor.hold(seatId, memberId);
+            // 선점 단계에선 락 TTL을 유지한다 (결제 완료 시 영구화, 미결제 시 만료 스케줄러가 해제).
+            log.info("== [Worker] 좌석 선점(결제 대기) -> 회원: {}, 좌석: {} ==", memberId, seatId);
         } catch (Exception e) {
             // 실패 시 좌석 락을 풀어 재선점이 가능하게 하고, 원인 분석을 위해 DLQ에 적재한다.
             redisTemplate.delete(seatLockKey);

@@ -55,8 +55,8 @@ public class TicketReservationConcurrencyTest {
     }
 
     @Test
-    @DisplayName("같은 좌석에 동시 예매가 몰려도 정확히 1건만 성공한다")
-    void onlyOneReservationSucceedsUnderConcurrency() throws InterruptedException {
+    @DisplayName("같은 좌석에 동시 선점이 몰려도 정확히 1건만 성공한다")
+    void onlyOneHoldSucceedsUnderConcurrency() throws InterruptedException {
         int threadCount = 100;
         ExecutorService executorService = Executors.newFixedThreadPool(32);
         CountDownLatch latch = new CountDownLatch(threadCount);
@@ -65,7 +65,7 @@ public class TicketReservationConcurrencyTest {
         for (int i = 0; i < threadCount; i++) {
             executorService.submit(() -> {
                 try {
-                    processor.reserve(seatId, memberId);
+                    processor.hold(seatId, memberId);
                     successCount.incrementAndGet();
                 } catch (Exception ignored) {
                     // 좌석 상태 가드/낙관적 락/유니크 제약으로 패배한 요청은 예외 발생 (정상)
@@ -80,6 +80,6 @@ public class TicketReservationConcurrencyTest {
 
         assertThat(successCount.get()).isEqualTo(1);
         assertThat(reservationRepository.count()).isEqualTo(1);
-        assertThat(seatRepository.findById(seatId).orElseThrow().getStatus()).isEqualTo(SeatStatus.RESERVED);
+        assertThat(seatRepository.findById(seatId).orElseThrow().getStatus()).isEqualTo(SeatStatus.HELD);
     }
 }
